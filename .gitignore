@@ -3,3 +3,5 @@ __pycache__/
 report/*.pdf
 report/pg-*.jpg
 .DS_Store
+502IT_submission.zip
+*.zip
