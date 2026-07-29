@@ -22,8 +22,17 @@ from src.recommendation_engine import Book, RecommendationEngine
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 os.makedirs(OUT, exist_ok=True)
-PALETTE = ["#4C78A8", "#F58518", "#54A24B", "#E45756", "#72B7B2", "#B279A2"]
-plt.rcParams.update({"figure.dpi": 130, "font.size": 10})
+
+# Black-and-white scheme: grey fills distinguished by hatch patterns and black
+# edges, so every figure prints clearly without colour.
+GREYS = ["#3d3d3d", "#7a7a7a", "#b0b0b0", "#dcdcdc", "#565656", "#9a9a9a"]
+HATCH = ["", "///", "...", "xxx", "\\\\\\", "+++"]
+plt.rcParams.update({
+    "figure.dpi": 130, "font.size": 10,
+    "axes.edgecolor": "black", "axes.labelcolor": "black",
+    "text.color": "black", "xtick.color": "black", "ytick.color": "black",
+    "font.family": "DejaVu Sans",
+})
 
 
 def chart_scheduler_comparison() -> None:
@@ -42,10 +51,10 @@ def chart_scheduler_comparison() -> None:
     x = range(len(names))
     width = 0.38
     fig, ax = plt.subplots(figsize=(6.2, 3.6))
-    b1 = ax.bar([i - width / 2 for i in x], waits, width,
-                label="Avg waiting", color=PALETTE[0])
-    b2 = ax.bar([i + width / 2 for i in x], turns, width,
-                label="Avg turnaround", color=PALETTE[1])
+    b1 = ax.bar([i - width / 2 for i in x], waits, width, label="Avg waiting",
+                color=GREYS[2], edgecolor="black", hatch=HATCH[0])
+    b2 = ax.bar([i + width / 2 for i in x], turns, width, label="Avg turnaround",
+                color=GREYS[0], edgecolor="black", hatch=HATCH[1])
     ax.bar_label(b1, fmt="%.2f", fontsize=8, padding=2)
     ax.bar_label(b2, fmt="%.2f", fontsize=8, padding=2)
     ax.set_xticks(list(x))
@@ -76,7 +85,10 @@ def chart_recommendations() -> None:
 
     fig, ax = plt.subplots(figsize=(6.2, 3.4))
     bars = ax.barh(titles[::-1], scores[::-1],
-                   color=[PALETTE[i % len(PALETTE)] for i in range(len(scores))])
+                   color=[GREYS[i % len(GREYS)] for i in range(len(scores))],
+                   edgecolor="black")
+    for bar, h in zip(bars, [HATCH[i % len(HATCH)] for i in range(len(scores))]):
+        bar.set_hatch(h)
     ax.bar_label(bars, fmt="%.2f", fontsize=8, padding=3)
     ax.set_xlabel("Recommendation score (sum of neighbour similarity)")
     ax.set_title("Book recommendations for reader 'Dev'")
@@ -95,7 +107,9 @@ def chart_route_improvement() -> None:
     _, opt = planner.plan("Depot")
     fig, ax = plt.subplots(figsize=(4.6, 3.4))
     bars = ax.bar(["Nearest\nNeighbour", "NN + 2-opt"], [nn, opt],
-                  color=[PALETTE[3], PALETTE[2]])
+                  color=[GREYS[2], GREYS[0]], edgecolor="black",
+                  hatch="", width=0.6)
+    bars[1].set_hatch("///")
     ax.bar_label(bars, fmt="%.2f", fontsize=9)
     ax.set_ylabel("Total tour length (units)")
     ax.set_title("Tour length before / after 2-opt")
@@ -125,8 +139,8 @@ def chart_scaling() -> None:
     ref = [r * scale for r in ref]
 
     fig, ax = plt.subplots(figsize=(6.0, 3.6))
-    ax.plot(sizes, measured, "o-", color=PALETTE[0], label="Measured runtime")
-    ax.plot(sizes, ref, "--", color=PALETTE[3], label="O(n²) reference")
+    ax.plot(sizes, measured, "o-", color="black", label="Measured runtime")
+    ax.plot(sizes, ref, "s--", color="#7a7a7a", label="O(n^2) reference")
     ax.set_xlabel("Number of locations (n)")
     ax.set_ylabel("Construction time (ms)")
     ax.set_title("Nearest-Neighbour scaling: measured vs O(n^2)")
@@ -136,9 +150,39 @@ def chart_scaling() -> None:
     plt.close(fig)
 
 
+def chart_gantt() -> None:
+    """Gantt-style execution timelines for FCFS vs SJF on the sample workload."""
+    workload = [Process("P1", 0, 7, 2), Process("P2", 2, 4, 1),
+                Process("P3", 4, 1, 3), Process("P4", 5, 4, 2)]
+    pool = ResourcePool(1)
+    policies = [("FCFS", FCFSScheduler(pool)),
+                ("SJF", ShortestJobFirstScheduler(pool))]
+    fig, ax = plt.subplots(figsize=(6.4, 3.0))
+    hatch_for = {"P1": "", "P2": "///", "P3": "...", "P4": "xxx"}
+    grey_for = {"P1": "#b0b0b0", "P2": "#7a7a7a", "P3": "#dcdcdc", "P4": "#565656"}
+    for row, (name, sched) in enumerate(policies):
+        done = sched.run([Process(p.pid, p.arrival, p.burst, p.priority)
+                          for p in workload])
+        for p in done:
+            ax.barh(row, p.burst, left=p.start_time, height=0.5,
+                    color=grey_for[p.pid], edgecolor="black",
+                    hatch=hatch_for[p.pid])
+            ax.text(p.start_time + p.burst / 2, row, p.pid,
+                    va="center", ha="center", fontsize=8)
+    ax.set_yticks([0, 1])
+    ax.set_yticklabels(["FCFS", "SJF"])
+    ax.set_xlabel("Time")
+    ax.set_title("Execution timeline: FCFS vs Shortest Job First")
+    ax.set_xlim(0, 16)
+    fig.tight_layout()
+    fig.savefig(os.path.join(OUT, "chart_gantt.png"))
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     chart_scheduler_comparison()
     chart_recommendations()
     chart_route_improvement()
     chart_scaling()
+    chart_gantt()
     print("charts written to", OUT)

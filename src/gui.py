@@ -27,8 +27,8 @@ from src.resource_allocation import (
 )
 from src.recommendation_engine import Book, RecommendationEngine
 
-# A small, colour-blind-friendly palette reused across the charts.
-PALETTE = ["#4C78A8", "#F58518", "#54A24B", "#E45756", "#72B7B2", "#B279A2"]
+# Greyscale palette so the demonstrator matches the black-and-white report.
+PALETTE = ["#2b2b2b", "#5a5a5a", "#808080", "#a6a6a6", "#c9c9c9", "#e0e0e0"]
 
 
 def _draw_bar_chart(
@@ -137,11 +137,13 @@ class DeliveryTab(ttk.Frame):
         for a, b in zip(closed, closed[1:]):
             x0, y0 = px(a)
             x1, y1 = px(b)
-            c.create_line(x0, y0, x1, y1, fill="#4C78A8", width=2, arrow=tk.LAST)
+            c.create_line(x0, y0, x1, y1, fill="#000000", width=2, arrow=tk.LAST)
         for loc in self._locations:
             x, y = px(loc)
-            colour = "#E45756" if loc.name == "Depot" else "#54A24B"
-            c.create_oval(x - 6, y - 6, x + 6, y + 6, fill=colour, outline="")
+            is_depot = loc.name == "Depot"
+            fill = "#000000" if is_depot else "#ffffff"
+            c.create_oval(x - 6, y - 6, x + 6, y + 6, fill=fill,
+                          outline="#000000", width=2)
             c.create_text(x, y - 14, text=loc.name, font=("TkDefaultFont", 8))
 
 
@@ -257,11 +259,31 @@ class ApplicationWindow(tk.Tk):
         super().__init__()
         self.title("502IT - Algorithms & Data Structures Demonstrator")
         self.geometry("580x470")
+        self._apply_greyscale_theme()
         notebook = ttk.Notebook(self)
         notebook.add(DeliveryTab(notebook), text="1. Delivery Routes")
         notebook.add(ResourceTab(notebook), text="2. Resource Allocation")
         notebook.add(RecommendationTab(notebook), text="3. Recommendations")
         notebook.pack(fill="both", expand=True)
+
+    def _apply_greyscale_theme(self) -> None:
+        """Force a neutral grey theme so the UI matches the B/W report."""
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            return
+        self.configure(bg="#f2f2f2")
+        style.configure(".", background="#f2f2f2", foreground="#000000")
+        style.configure("TFrame", background="#f2f2f2")
+        style.configure("TLabel", background="#f2f2f2", foreground="#000000")
+        style.configure("TButton", background="#d9d9d9", foreground="#000000")
+        style.configure("TNotebook", background="#f2f2f2")
+        style.configure("TNotebook.Tab", background="#d9d9d9",
+                        foreground="#000000")
+        style.map("TNotebook.Tab",
+                  background=[("selected", "#ffffff")],
+                  foreground=[("selected", "#000000")])
 
 
 def main() -> None:
