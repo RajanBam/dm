@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+report/*.pdf
+report/pg-*.jpg
+.DS_Store
+502IT_submission.zip
+*.zip
